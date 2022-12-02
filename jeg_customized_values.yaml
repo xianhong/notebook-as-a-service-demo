@@ -1,0 +1,30 @@
+mirrorWorkingDirs: true
+service:
+  type: "LoadBalancer"
+  ports:
+    # The primary port on which Enterprise Gateway is servicing requests.
+    - name: "http"
+      port: 8888
+      targetPort: 8888
+    # The  port on which Enterprise Gateway will receive kernel connection info responses.
+    - name: "http-response"
+      port: 8877
+      targetPort: 8877
+deployment:
+  # Update CPU/Memory as needed
+  resources:
+    limits:
+      cpu: 1
+      memory: 5Gi
+    requests:
+      cpu: 1
+      memory: 2Gi
+  # Update to deploy multiple replicas of EG.
+  replicas: 1
+  # Give Enteprise Gateway some time to gracefully shutdown
+  terminationGracePeriodSeconds: 60
+kernelspecsPvc:
+  enabled: true
+  name: kernelspecs-pvc 
+kip:
+  enabled: false 

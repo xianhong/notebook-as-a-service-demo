@@ -1,0 +1,28 @@
+hub:
+  db:
+    pvc:
+      accessModes:
+        - ReadWriteOnce
+      storage: 1Gi
+      storageClassName: ssd-hostpath
+singleuser:
+  storage:
+    type: static
+    static:
+      pvcName: jhub-claim
+      subPath: "{username}"
+    capacity: 5Gi
+  networkPolicy:
+    enabled: false
+  image:
+    name: docker.io/jupyter/base-notebook
+    tag: hub-3.0.0
+  cmd: 
+    - "sh"
+    - "-c"
+    - "env \"KERNEL_PATH=/home/nfs_share/claim/$JUPYTERHUB_USER\" jupyterhub-singleuser" 
+    #- "env \"KERNEL_PATH=`mount|grep nfs|cut -f1 -d' '|cut -d: -f2`\" jupyterhub-singleuser" 
+  defaultUrl: "/lab"
+  extraEnv:
+    JUPYTER_GATEWAY_URL: "http://enterprise-gateway.enterprise-gateway:8888"
+    JUPYTERHUB_SINGLEUSER_APP: "jupyter_server.serverapp.ServerApp"

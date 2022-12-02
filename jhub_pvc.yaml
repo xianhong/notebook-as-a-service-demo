@@ -1,0 +1,32 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: nfs-pv
+  labels:
+    app: mission-control
+    type: nfs-volume
+spec:
+  capacity:
+    storage: 15Gi
+  accessModes:
+  - ReadWriteMany
+  nfs:
+    server: 172.17.0.1
+    path: "/home/nfs_share/claim"
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: jhub-claim
+  namespace: jupyterhub
+  labels:
+    app: mission-control
+    type: nfs-volume
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 15Gi
+

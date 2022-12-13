@@ -88,6 +88,7 @@ Demonstarte steps to realize Jupyter notebook as a service using Jupyter Enterpr
  
 	[Dockerfile](build/Dockerfile)
 1. **Customize _kernel.json_ file in kernelspecs' nfs share**
+
 	Customize `kernel.json` file in kernelspecs' nfs share to include environment variables **KERNEL_VOLUME_MOUNTS** and **KERNEL_VOLUMES**. These variables will be read by `python-kubernetes/scripts/launch_kubernetes.py` script to render kernel pod yaml file which includes mount of a nfs share at the path as specified by environment variable **KERNEL_PATH**. 
 	(_When JHub launches a server for a user that connects to JEG  ,**KERNEL_PATH** is one of enviornment variables that get passed to JEG. As **KERNEL_VOLUMES** in `python-kubernetes/kernel.json` makes reference to variable **KERNEL_PATH**, the kernel pod yaml file prepared by JEG will include a mount entry of NFS share at the path specified by **KERNEL_PATH**._) 
 	This will make a user's Jupyter server pod  and kernel pod have a common nfs share mapped to their home directories ( '/home/jovyan').

@@ -77,8 +77,9 @@ Demonstarte steps to realize Jupyter notebook as a service using Jupyter Enterpr
 	  - Set singleuser.extraEnv.JUPYTER_GATEWAY_URL to point to JEG's endpoint (http://enterprise-gateway.enterprise-gateway:8888)
 	  - Set singleuser.cmd to have a shell expand 'KERNEL_PATH=' expression first and pass **KERNEL_PATH** as an environment variable  to 'jupyterhub-singleuser' by 'env' command. **JUPYTERHUB_USER** contains username and **KERNEL_PATH** stores the nfs share path to be mapped to the user's home dir in kernel pod.
 
-1. **Build custom Spark python kernel image that supports S3A access to S3 object storage**
-	As the default Spark python kernel images available in [repo](https://hub.docker.com/r/elyra/kernel-spark-py) are built from Spark with Hadoop 2.7, we cannot get S3A access work with these images, we therefore build a custom container image using Dockerfile from the repo as a template and specifically choose Spark to go with Hadoop 3.2. We add `hadoop-aws-3.2.3.jar` and `aws-java-sdk-bundle-1.11.901.jar` required for S3A access to this image. These two har files can get along with Spark 3.2.3 on Hadoop 3.2.
+1. **Build custom Spark python kernel image that supports S3A access to object storage**
+
+	As the default Spark python kernel images available in [repo](https://hub.docker.com/r/elyra/kernel-spark-py) are built from Spark with Hadoop 2.7, we cannot get S3A access work with these images, we therefore build a custom container image using Dockerfile from the repo as a template and specifically install Spark 3.2.3 with Hadoop 3.2. We add `hadoop-aws-3.2.3.jar` and `aws-java-sdk-bundle-1.11.901.jar` required for S3A access to this image. These two jar files can get along with Spark 3.2.3 on Hadoop 3.2.
 	
 	```
 	cd build

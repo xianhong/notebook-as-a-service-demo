@@ -6,6 +6,8 @@ Demonstarte steps to realize Jupyter notebook as a service using Jupyter Enterpr
 ### LAB Overview:
 * Deploy JEG & JHub on single node Microk8s cluster.
 * Simulate users access Jupyterhub via their browsers . Jupyterhub launches server (JupyterLab backend) pod for each individual user. When a user tries to connect to a kernel, the server will acts as a proxy to spawn a kernel Pod in a separate namespace which is separate from server Pod. All these Pods are managed by a K8s cluster. When a user shutdowns kernel, the kernel pod will be destroyed . When a user shutdowns server, server Pod will be destroyed. But, a PVC (bound to a PV backed by a NFS share storing all users' home directory data) persists even after a server pod is deleted, thus keeping user's home directory data beyond server pod lifecycle. Next time, when the user logs in to start another server, the newly created server pod will grab existing PVC so that the user can continue to work with his/her data.
+* In this demo, we showcase how Jupyter Enterprise Gateway works with Python kernel and Spark Python kernel (Spark on Kubernetes).
+
 ![Diagram](pictures/diagram.png)
 ### LAB Steps:
 1. **Setup a NFS server**
@@ -42,12 +44,20 @@ Demonstarte steps to realize Jupyter notebook as a service using Jupyter Enterpr
     Copy kernelspecs and kernel-launcher sciprts and j2 templates to the NFS share that corresponds  to pvc **kernelspecs-pvc** . After copy, the NFS share file /directory structure looks like:
 
     ```
-    .
-    └── python_kubernetes
-        ├── kernel.json
-        └── scripts
-            ├── kernel-pod.yaml.j2
-            └── launch_kubernetes.py
+	.
+	├── python_kubernetes
+	│   ├── kernel.json
+	│   └── scripts
+	│       ├── kernel-pod.yaml.j2
+	│       └── launch_kubernetes.py
+	└── spark_python_kubernetes
+	    ├── bin
+	    │   └── run.sh
+	    ├── kernel.json
+	    └── scripts
+	        ├── kernel-pod.yaml.j2
+	        └── launch_kubernetes.py
+			
     ```
         
     [**jeg_customized_values.yaml**](jeg_customized_values.yaml)
@@ -67,12 +77,27 @@ Demonstarte steps to realize Jupyter notebook as a service using Jupyter Enterpr
 	  - Set singleuser.extraEnv.JUPYTER_GATEWAY_URL to point to JEG's endpoint (http://enterprise-gateway.enterprise-gateway:8888)
 	  - Set singleuser.cmd to have a shell expand 'KERNEL_PATH=' expression first and pass **KERNEL_PATH** as an environment variable  to 'jupyterhub-singleuser' by 'env' command. **JUPYTERHUB_USER** contains username and **KERNEL_PATH** stores the nfs share path to be mapped to the user's home dir in kernel pod.
 
+1. **Build custom Spark python kernel image that supports S3A access to S3 object storage**
+	As the default Spark python kernel images available in [repo](https://hub.docker.com/r/elyra/kernel-spark-py) are built from Spark with Hadoop 2.7, we cannot get S3A access work with these images, we therefore build a custom container image using Dockerfile from the repo as a template and specifically choose Spark to go with Hadoop 3.2. We add `hadoop-aws-3.2.3.jar` and `aws-java-sdk-bundle-1.11.901.jar` required for S3A access to this image. These two har files can get along with Spark 3.2.3 on Hadoop 3.2.
+	
+	```
+	cd build
+	docker build -t yangxh/kernel-spark.py:latest .
+	```
+ 
+	[Dockerfile](build/Dockerfile)
 1. **Customize _kernel.json_ file in kernelspecs' nfs share**
-	Customize `python-kubernetes/kernel.json` file in kernelspecs' nfs share to include environment variables **KERNEL_VOLUME_MOUNTS** and **KERNEL_VOLUMES**. These variables will be read by `python-kubernetes/scripts/launch_kubernetes.py` script to render kernel pod yaml file which includes mount of a nfs share at the path as specified by environment variable **KERNEL_PATH**. 
+	Customize `kernel.json` file in kernelspecs' nfs share to include environment variables **KERNEL_VOLUME_MOUNTS** and **KERNEL_VOLUMES**. These variables will be read by `python-kubernetes/scripts/launch_kubernetes.py` script to render kernel pod yaml file which includes mount of a nfs share at the path as specified by environment variable **KERNEL_PATH**. 
 	(_When JHub launches a server for a user that connects to JEG  ,**KERNEL_PATH** is one of enviornment variables that get passed to JEG. As **KERNEL_VOLUMES** in `python-kubernetes/kernel.json` makes reference to variable **KERNEL_PATH**, the kernel pod yaml file prepared by JEG will include a mount entry of NFS share at the path specified by **KERNEL_PATH**._) 
 	This will make a user's Jupyter server pod  and kernel pod have a common nfs share mapped to their home directories ( '/home/jovyan').
 	
     [**python_kubernetes/kernel.json**](python_kubernetes/kernel.json)
+
+	In addition to the above customization, we will add configuration pertaining to S3 object storage endpoint URL, authentication provider and credentials to `spark_python_kubernetes/kernel.json` so that S3 object storage could be accessed in Spark python kernel. 
+	For illustration, here we specify `AWS_SECRET_ACCESS_KEY=foo`,`AWS_ACCESS_KEY_ID=bar` as environment variables and append `--conf spark.hadoop.fs.s3a.aws.credentials.provider=org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider --conf spark.hadoop.fs.s3a.endpoint=object.storage.com` to `SPARK_OPTS` variable.
+	We also configure Spark driver and executor containers to use custom container image `docker.io/yangxh/kernel-spark-py:latest` we built in previous step.
+    
+    [**spark_python_kubernetes/kernel.json**](spark_python_kubernetes/kernel.json)
 ### Screenshots:
 - **PVs**
 
@@ -90,9 +115,13 @@ Demonstarte steps to realize Jupyter notebook as a service using Jupyter Enterpr
 
 ![](./pictures/ns_pods_before.png)
 
-- **After user Alice login and connect to a kernel (two more Pods: One for server and one for kernel)**
+- **After user Alice login and connect to a python kernel (two more Pods: One for server and one for kernel)**
 
 ![](./pictures/ns_pod_after.png)
+
+- **After user Alice login and connect to Spark python kernel (three more Pods: one Spark driver, two executors, and one server)**
+
+![](./pictures/spark_all_pods.png)
 
 - **After user Alice shuts dowm a kernel ,but keeps logged in (one less Pod: Kernel pod is gone and server pod stays)**
 
@@ -108,4 +137,5 @@ Demonstarte steps to realize Jupyter notebook as a service using Jupyter Enterpr
     + [https://jupyter-enterprise-gateway.readthedocs.io/en/latest/](https://jupyter-enterprise-gateway.readthedocs.io/en/latest/)
 + JupyterHub : 
     + [https://z2jh.jupyter.org/en/stable/](https://z2jh.jupyter.org/en/stable/)
-
++ Kernel Spark Python Dockerfile:
+    + [https://github.com/jupyter-server/enterprise_gateway/blob/main/etc/docker/kernel-spark-py/Dockerfile](https://github.com/jupyter-server/enterprise_gateway/blob/main/etc/docker/kernel-spark-py/Dockerfile)

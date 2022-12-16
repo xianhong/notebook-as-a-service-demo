@@ -24,6 +24,7 @@ Demonstarte steps to realize Jupyter notebook as a service using Jupyter Enterpr
     ```
 
 1. **Create PV & PVCs**
+    
     Use yaml file [`jhub_pvc.yaml`](jhub_pvc.yaml) to create  :
 	  - pv **nfs-pv** : mount of a nfs share at **172.17.0.1:/home/nfs_share/claim**
 	  - pvc **jhub-claim** in namespace **jupyterhub** : bound to pv **nfs-pv** 
@@ -39,6 +40,8 @@ Demonstarte steps to realize Jupyter notebook as a service using Jupyter Enterpr
     helm template --output-dir ./eg enterprise-gateway enterprise-gateway/etc/kubernetes/helm/enterprise-gateway -n enterprise-gateway -f jeg_customized_values.yaml
     kubectl apply -f ./eg/enterprise-gateway/templates/
     ```
+    We use [**jeg_customized_values.yaml**](jeg_customized_values.yaml) to customize JEG chart values.
+    
     Copy kernelspecs and kernel-launcher sciprts and j2 templates to the NFS share that corresponds  to pvc **kernelspecs-pvc** . After copy, the NFS share file /directory structure looks like:
 
     ```
@@ -57,8 +60,6 @@ Demonstarte steps to realize Jupyter notebook as a service using Jupyter Enterpr
 	        └── launch_kubernetes.py
 			
     ```
-        
-    [**jeg_customized_values.yaml**](jeg_customized_values.yaml)
 
 
 1. **Helm deploy JHub to namespace `jupyterhub`**  

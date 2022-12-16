@@ -24,16 +24,14 @@ Demonstarte steps to realize Jupyter notebook as a service using Jupyter Enterpr
     ```
 
 1. **Create PV & PVCs**
-    Use yaml file `jhub_pvc.yaml` to create  :
+    Use yaml file [`jhub_pvc.yaml`](jhub_pvc.yaml) to create  :
 	  - pv **nfs-pv** : mount of a nfs share at **172.17.0.1:/home/nfs_share/claim**
 	  - pvc **jhub-claim** in namespace **jupyterhub** : bound to pv **nfs-pv** 
 	  
-    [**jhub_pvc.yaml**](jhub_pvc.yaml)
 
-    Use yaml file `kernelspecs_pvc.yaml`  to create pvc **kernelspecs-pvc** in namespace **enterprise-gateway** : 20MB nfs share allocated from **nfs-client** storage class to store kernelspecs.
+    Use yaml file [`kernelspecs_pvc.yaml`](kernelspecs_pvc.yaml)  to create pvc **kernelspecs-pvc** in namespace **enterprise-gateway** : 20MB nfs share allocated from **nfs-client** storage class to store kernelspecs.
     
-    [**kernelspecs_pvc.yaml**](kernelspecs_pvc.yaml)
-    
+        
 1. **Deploy JEG to namespace `enterprise-gateway`**
     ```
     git clone https://github.com/jupyter-server/enterprise_gateway
@@ -79,27 +77,28 @@ Demonstarte steps to realize Jupyter notebook as a service using Jupyter Enterpr
 
 1. **Build custom Spark python kernel image that supports S3A access to object storage**
 
-	As the default Spark python kernel images available in [repo](https://hub.docker.com/r/elyra/kernel-spark-py) are built from Spark with Hadoop 2.7, we cannot get S3A access work with these images, we therefore build a custom container image using Dockerfile from the repo as a template and specifically install Spark 3.2.3 with Hadoop 3.2. We add `hadoop-aws-3.2.3.jar` and `aws-java-sdk-bundle-1.11.901.jar` required for S3A access to this image. These two jar files can get along with Spark 3.2.3 on Hadoop 3.2.
+	As the default Spark python kernel images available in [repo](https://hub.docker.com/r/elyra/kernel-spark-py) are built from Spark with Hadoop 2.7, we cannot get S3A access work with these images, we therefore build a custom container image using [Dockerfile](https://github.com/jupyter-server/enterprise_gateway/blob/main/etc/docker/kernel-spark-py/Dockerfile) from the repo as a template and specifically install Spark 3.2.3 with Hadoop 3.2. We add `hadoop-aws-3.2.3.jar` and `aws-java-sdk-bundle-1.11.901.jar` required for S3A access to this image. These two jar files can get along with Spark 3.2.3 on Hadoop 3.2.
 	
 	```
 	cd build
 	docker build -t yangxh/kernel-spark.py:latest .
 	```
  
-	[Dockerfile](build/Dockerfile)
+	We use the [Dockerfile](build/Dockerfile) to build the custom kernel image.
+	
 1. **Customize _kernel.json_ file in kernelspecs' nfs share**
 
-	Customize `kernel.json` file in kernelspecs' nfs share to include environment variables **KERNEL_VOLUME_MOUNTS** and **KERNEL_VOLUMES**. These variables will be read by `python-kubernetes/scripts/launch_kubernetes.py` script to render kernel pod yaml file which includes mount of a nfs share at the path as specified by environment variable **KERNEL_PATH**. 
+	Customize [`python_kubernetes/kernel.json`](python_kubernetes/kernel.json) and [`spark_python_kubernetes/kernel.json`](spark_python_kubernetes/kernel.json) files in kernelspecs' nfs share to include environment variables **KERNEL_VOLUME_MOUNTS** and **KERNEL_VOLUMES**. These variables will be read by `python-kubernetes/scripts/launch_kubernetes.py` script to render kernel pod yaml file which includes mount of a nfs share at the path as specified by environment variable **KERNEL_PATH**. 
 	(_When JHub launches a server for a user that connects to JEG  ,**KERNEL_PATH** is one of enviornment variables that get passed to JEG. As **KERNEL_VOLUMES** in `python-kubernetes/kernel.json` makes reference to variable **KERNEL_PATH**, the kernel pod yaml file prepared by JEG will include a mount entry of NFS share at the path specified by **KERNEL_PATH**._) 
 	This will make a user's Jupyter server pod  and kernel pod have a common nfs share mapped to their home directories ( '/home/jovyan').
 	
-    [**python_kubernetes/kernel.json**](python_kubernetes/kernel.json)
+    
 
-	In addition to the above customization, we will add configuration pertaining to S3 object storage endpoint URL, authentication provider and credentials to `spark_python_kubernetes/kernel.json` so that S3 object storage could be accessed in Spark python kernel. 
+	In addition to the above customization, we will add configuration pertaining to S3 object storage endpoint URL, authentication provider and credentials to [`spark_python_kubernetes/kernel.json`](spark_python_kubernetes/kernel.json) so that S3 object storage could be accessed in Spark python kernel. 
 	For illustration, here we specify `AWS_SECRET_ACCESS_KEY=foo`,`AWS_ACCESS_KEY_ID=bar` as environment variables and append `--conf spark.hadoop.fs.s3a.aws.credentials.provider=org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider --conf spark.hadoop.fs.s3a.endpoint=object.storage.com` to `SPARK_OPTS` variable.
 	We also configure Spark driver and executor containers to use custom container image `docker.io/yangxh/kernel-spark-py:latest` we built in previous step.
     
-    [**spark_python_kubernetes/kernel.json**](spark_python_kubernetes/kernel.json)
+    
 ### Screenshots:
 - **PVs**
 

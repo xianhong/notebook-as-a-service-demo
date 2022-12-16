@@ -68,9 +68,8 @@ Demonstarte steps to realize Jupyter notebook as a service using Jupyter Enterpr
     helm repo update
     helm install jhub jupyterhub/jupyterhub -f jhub_customized_values.yaml --version=2.0.0 -n jupyterhub 
     ```
-    [**jhub_customized_values.yaml**](jhub_customized_values.yaml)
+    We use [**jhub_customized_values.yaml**](jhub_customized_values.yaml) to customize Jhub chart values:
     
-    Explanation of `jhub_customized_values.yaml` customization:
 	  - Set singleuser.storage.type to **static** to use static storage allocation
 	  - Set singleuser.storage.static.pvcName (**jhub-claim**) to allocate static storage for jupyter server (ex: each user's home dir mapped to a subdir of the username)
 	  - Set singleuser.extraEnv.JUPYTER_GATEWAY_URL to point to JEG's endpoint (http://enterprise-gateway.enterprise-gateway:8888)
